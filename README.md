@@ -1,5 +1,11 @@
 THIS IS A VERSION OF PORECHOP CUSTOMIZED BY TYLER CHAFIN- FOR THE VANILLA PORECHOP PLEASE SEE: https://github.com/rrwick/Porechop
 
+Modifications:
+* Custom adaptors and barcodes added [done]
+* Option to skip all barcodes [done]
+* Option to ONLY write reads which were trimmed [done]
+* Write adaptor alignments in headers [done]
+* Input table of barcodes and desired sample names [planned]
 
 
 <p align="center"><img src="misc/porechop_logo_knife.png" alt="Porechop" width="600"></p>

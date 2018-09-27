@@ -2,6 +2,8 @@ THIS IS A VERSION OF PORECHOP CUSTOMIZED BY TYLER CHAFIN- FOR THE VANILLA PORECH
 
 Modifications:
 * Custom adaptors and barcodes added [done]
+* Option to skip all barcodes [done]
+* Option to ONLY write reads which were trimmes [in-progress]
 * Write adaptor alignments in headers [in-progress]
 * Input table of barcodes and desired sample names [planned]
 

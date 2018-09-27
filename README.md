@@ -1,5 +1,9 @@
 THIS IS A VERSION OF PORECHOP CUSTOMIZED BY TYLER CHAFIN- FOR THE VANILLA PORECHOP PLEASE SEE: https://github.com/rrwick/Porechop
 
+Modifications:
+* Custom adaptors and barcodes added [done]
+* Option to write FASTA [in-progress]
+* Option to place adaptor sequences in headers [in-progress]
 
 
 <p align="center"><img src="misc/porechop_logo_knife.png" alt="Porechop" width="600"></p>

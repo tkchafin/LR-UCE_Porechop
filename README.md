@@ -2,8 +2,8 @@ THIS IS A VERSION OF PORECHOP CUSTOMIZED BY TYLER CHAFIN- FOR THE VANILLA PORECH
 
 Modifications:
 * Custom adaptors and barcodes added [done]
-* Option to write FASTA [in-progress]
-* Option to place adaptor sequences in headers [in-progress]
+* Write adaptor alignments in headers [in-progress]
+* Input table of barcodes and desired sample names [planned]
 
 
 <p align="center"><img src="misc/porechop_logo_knife.png" alt="Porechop" width="600"></p>

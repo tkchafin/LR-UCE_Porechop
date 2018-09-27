@@ -88,7 +88,7 @@ class NanoporeRead(object):
         split_read_parts = [x for x in split_read_parts if len(x[0]) >= min_split_read_size]
         return split_read_parts
 
-    def get_fasta(self, min_split_read_size, discard_middle, untrimmed=False):
+    def get_fasta(self, min_split_read_size, discard_middle, untrimmed, write_adapters):
         if not self.middle_trim_positions:
             if untrimmed:
                 seq = self.seq
@@ -103,13 +103,30 @@ class NanoporeRead(object):
             fasta_str = ''
             for i, split_read_part in enumerate(self.get_split_read_parts(min_split_read_size)):
                 read_name = add_number_to_read_name(self.name, i + 1)
+            if write_adapters:
+                for aln in self.start_adapter_alignments:
+                    s=aln[3]
+                    e=aln[4]
+                    if aln[0].is_barcode():
+                       read_name += ";s_barcode=" + str(self.seq[s:e])
+                    else:
+                       read_name += ";s_" + str(aln[0].name) + "=" + str(self.seq[s:e])
+                for aln in self.end_adapter_alignments:
+                    s=aln[3]
+                    e=aln[4]
+                    if aln[0].is_barcode():
+                       read_name += ";e_barcode=" + str(self.seq[s:e])
+                    else:
+                       read_name += ";e_" + str(aln[0].name) + "=" + str(self.seq[s:e])
+
+
                 if not split_read_part[0]:  # Don't return empty sequences
                     return ''
                 seq = add_line_breaks_to_sequence(split_read_part[0], 70)
                 fasta_str += ''.join(['>', read_name, '\n', seq])
             return fasta_str
 
-    def get_fastq(self, min_split_read_size, discard_middle, untrimmed=False):
+    def get_fastq(self, min_split_read_size, discard_middle, untrimmed, write_adapters):
         if not self.middle_trim_positions:
             if untrimmed:
                 seq = self.seq
@@ -119,13 +136,31 @@ class NanoporeRead(object):
                 quals = self.get_quals_with_start_end_adapters_trimmed()
             if not seq:  # Don't return empty sequences
                 return ''
-            return ''.join(['@', self.name, '\n', seq, '\n+\n', quals, '\n'])
+            if write_adapters:
+                name = self.name
+                for aln in self.start_adapter_alignments:
+                    s=aln[3]
+                    e=aln[4]
+                    if aln[0].is_barcode():
+                       name += " s_barcode=" + str(self.seq[s:e])
+                    else:
+                       name += " s_" + str(aln[0].name) + "=" + str(self.seq[s:e])
+                for aln in self.end_adapter_alignments:
+                    s=aln[3]
+                    e=aln[4]
+                    if aln[0].is_barcode():
+                       name += " e_barcode=" + str(self.seq[s:e])
+                    else:
+                       name += " e_" + str(aln[0].name) + "=" + str(self.seq[s:e])
+                return ''.join(['@', name, '\n', seq, '\n+\n', quals, '\n'])
+            else:
+                return ''.join(['@', self.name, '\n', seq, '\n+\n', quals, '\n'])
         elif discard_middle:
             return ''
         else:
             fastq_str = ''
             for i, split_read_part in enumerate(self.get_split_read_parts(min_split_read_size)):
-                read_name = add_number_to_read_name(self.name, i + 1)
+                read_name = add_number_to_read_name(self.name, i + 1) #here to add adaptor alignments to header?
                 if not split_read_part[0]:  # Don't return empty sequences
                     return ''
                 fastq_str += ''.join(['@', read_name, '\n', split_read_part[0], '\n+\n',

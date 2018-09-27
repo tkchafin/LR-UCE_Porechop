@@ -38,19 +38,26 @@ def main():
                                                args.scoring_scheme_vals, args.print_dest,
                                                args.adapter_threshold, args.threads)
     matching_sets = exclude_end_adapters_for_rapid(matching_sets)
+    if args.skip_barcodes:
+        matching_sets = remove_all_barcodes(matching_sets)
+
     matching_sets = fix_up_1d2_sets(matching_sets)
     display_adapter_set_results(matching_sets, args.verbosity, args.print_dest)
     matching_sets = add_full_barcode_adapter_sets(matching_sets)
+
 
     if args.barcode_dir:
         forward_or_reverse_barcodes = choose_barcoding_kit(matching_sets, args.verbosity,
                                                            args.print_dest)
     else:
         forward_or_reverse_barcodes = None
+
+
     if args.verbosity > 0:
         print('\n', file=args.print_dest)
 
     if matching_sets:
+
         check_barcodes = (args.barcode_dir is not None)
         find_adapters_at_read_ends(reads, matching_sets, args.verbosity, args.end_size,
                                    args.extra_end_trim, args.end_threshold,
@@ -74,7 +81,7 @@ def main():
     output_reads(reads, args.format, args.output, read_type, args.verbosity,
                  args.discard_middle, args.min_split_read_size, args.print_dest,
                  args.barcode_dir, args.input, args.untrimmed, args.threads,
-                 args.discard_unassigned)
+                 args.discard_unassigned, args.exclude_untrimmed, args.write_adapters)
 
 
 def get_arguments():
@@ -105,10 +112,16 @@ def get_arguments():
                                  'a file and stderr if reads are printed to stdout')
     main_group.add_argument('-t', '--threads', type=int, default=default_threads,
                             help='Number of threads to use for adapter alignment')
+    main_group.add_argument('--exclude_untrimmed', action='store_true',
+                            help='TKC: Exclude all reads which were NOT trimmed')
+    main_group.add_argument('--write_adapters', action='store_true',
+                            help='TKC: Write adapters to FASTA/FASTQ headers')
 
     barcode_group = parser.add_argument_group('Barcode binning settings',
                                               'Control the binning of reads based on barcodes '
                                               '(i.e. barcode demultiplexing)')
+    barcode_group.add_argument('--skip_barcodes', action='store_true',
+                               help='TKC: Exclude all barcode adapters.')
     barcode_group.add_argument('-b', '--barcode_dir',
                                help='Reads will be binned based on their barcode and saved to '
                                     'separate files in this directory (incompatible with '
@@ -360,6 +373,19 @@ def exclude_end_adapters_for_rapid(matching_sets):
             s.end_sequence = None
     return matching_sets
 
+def remove_all_barcodes(matching_sets):
+    """
+    Deletes barcodes from adaptor set.
+    """
+    blacklist=list()
+    for idx, adapt in enumerate(matching_sets):
+        if adapt.is_barcode():
+            blacklist.append(idx)
+    for index in sorted(blacklist, reverse=True):
+        del matching_sets[index]
+
+    return matching_sets
+
 
 def fix_up_1d2_sets(matching_sets):
     """
@@ -587,7 +613,7 @@ def display_read_middle_trimming_summary(reads, discard_middle, verbosity, print
 
 def output_reads(reads, out_format, output, read_type, verbosity, discard_middle,
                  min_split_size, print_dest, barcode_dir, input_filename,
-                 untrimmed, threads, discard_unassigned):
+                 untrimmed, threads, discard_unassigned, exclude_untrimmed, write_adapters):
     if verbosity > 0:
         trimmed_or_untrimmed = 'untrimmed' if untrimmed else 'trimmed'
         if barcode_dir is not None:
@@ -638,13 +664,17 @@ def output_reads(reads, out_format, output, read_type, verbosity, discard_middle
         barcode_files = {}
         barcode_read_counts, barcode_base_counts = defaultdict(int), defaultdict(int)
         for read in reads:
+            #TKC: Skip if no start or end alignments
+            if exclude_untrimmed:
+                if len(read.start_adapter_alignments) == 0 and len(read.start_adapter_alignments) == 0:
+                    continue
             barcode_name = read.barcode_call
             if discard_unassigned and barcode_name == 'none':
                 continue
             if out_format == 'fasta':
-                read_str = read.get_fasta(min_split_size, discard_middle, untrimmed)
+                read_str = read.get_fasta(min_split_size, discard_middle, untrimmed, write_adapters)
             else:
-                read_str = read.get_fastq(min_split_size, discard_middle, untrimmed)
+                read_str = read.get_fastq(min_split_size, discard_middle, untrimmed, write_adapters)
             if not read_str:
                 continue
             if barcode_name not in barcode_files:
@@ -687,8 +717,12 @@ def output_reads(reads, out_format, output, read_type, verbosity, discard_middle
     # Output to all reads to stdout.
     elif output is None:
         for read in reads:
-            read_str = read.get_fasta(min_split_size, discard_middle) if out_format == 'fasta' \
-                else read.get_fastq(min_split_size, discard_middle)
+            #TKC: Skip if no start or end alignments
+            if exclude_untrimmed:
+                if len(read.start_adapter_alignments) == 0 and len(read.start_adapter_alignments) == 0:
+                    continue
+            read_str = read.get_fasta(min_split_size, discard_middle, untrimmed, write_adapters) if out_format == 'fasta' \
+                else read.get_fastq(min_split_size, discard_middle, untrimmed, write_adapters)
             print(read_str, end='')
         if verbosity > 0:
             print('Done', flush=True, file=print_dest)
@@ -701,8 +735,12 @@ def output_reads(reads, out_format, output, read_type, verbosity, discard_middle
             out_filename = output
         with open(out_filename, 'wt') as out:
             for read in reads:
-                read_str = read.get_fasta(min_split_size, discard_middle) if out_format == 'fasta' \
-                    else read.get_fastq(min_split_size, discard_middle)
+                #TKC: Skip if no start or end alignments
+                if exclude_untrimmed:
+                    if len(read.start_adapter_alignments) == 0 and len(read.start_adapter_alignments) == 0:
+                        continue
+                read_str = read.get_fasta(min_split_size, discard_middle, untrimmed, write_adapters) if out_format == 'fasta' \
+                    else read.get_fastq(min_split_size, discard_middle, untrimmed, write_adapters)
                 out.write(read_str)
         if gzipped_out:
             subprocess.check_output(gzip_command + ' -c ' + out_filename + ' > ' + output,
